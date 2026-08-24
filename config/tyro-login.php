@@ -140,8 +140,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'registration' => [
-        // Whether registration is enabled
-        'enabled' => env('TYRO_LOGIN_REGISTRATION_ENABLED', true),
+        // Whether registration is enabled.
+        // Off by default: this is a closed mess system — members join via a
+        // manager-created login or an invite link. Public signup only produced
+        // roleless accounts that RootController immediately logged back out.
+        'enabled' => env('TYRO_LOGIN_REGISTRATION_ENABLED', false),
 
         // Whether to automatically log in the user after registration
         'auto_login' => env('TYRO_LOGIN_REGISTRATION_AUTO_LOGIN', true),
@@ -162,8 +165,11 @@ return [
         // Whether to assign a default role to new users
         'assign_default_role' => env('TYRO_LOGIN_ASSIGN_DEFAULT_ROLE', true),
 
-        // The default role slug to assign to new users
-        'default_role_slug' => env('TYRO_LOGIN_DEFAULT_ROLE_SLUG', 'user'),
+        // The default role slug to assign to new users. 'mess-member', not
+        // 'user': the 'user' role was dropped and reassigned by migration —
+        // if registration is ever re-enabled via env, new accounts must get a
+        // role RootController recognizes or they are logged out on arrival.
+        'default_role_slug' => env('TYRO_LOGIN_DEFAULT_ROLE_SLUG', 'mess-member'),
     ],
 
     /*
