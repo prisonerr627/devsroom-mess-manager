@@ -17,7 +17,11 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    // Local dev falls back to sqlite, but production must NEVER: a container
+    // sqlite file is wiped on every deploy, so a missing DB_CONNECTION would
+    // silently discard all data. Defaulting to mysql in production makes the
+    // deploy fail loudly (connection refused) until the DB_* vars are set.
+    'default' => env('DB_CONNECTION', env('APP_ENV', 'production') === 'production' ? 'mysql' : 'sqlite'),
 
     /*
     |--------------------------------------------------------------------------
