@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Railway's edge proxy: trust X-Forwarded-* so generated URLs,
+        // redirects, and signed URLs use https instead of http.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'month.open' => EnsureMonthIsOpen::class,
             'setup.open' => RedirectIfSetupCompleted::class,
