@@ -285,6 +285,14 @@ Route::middleware(['auth', 'roles:mess-member', 'password.change'])->group(funct
     Route::get('/my', [MyController::class, 'index'])->name('my');
     Route::patch('my/profile', [MyController::class, 'updateProfile'])->name('my.profile.update');
     Route::post('my/meal-off', [MyController::class, 'storeMealOff'])->name('my.meal-off.store');
+    // Member self-service: own meal entry and guest meals, TODAY only —
+    // the controller pins date + member server-side (no URL/body params).
+    Route::post('my/meals/today', [MyController::class, 'saveTodayMeal'])
+        ->middleware('throttle:30,1')
+        ->name('my.meals.today.save');
+    Route::post('my/guest-meals', [MyController::class, 'storeGuestMeal'])
+        ->middleware('throttle:30,1')
+        ->name('my.guest-meals.store');
     Route::get('my/payments', [MyPaymentController::class, 'index'])->name('my.payments');
     Route::get('my/bill-preview', [MyBillPreviewController::class, 'index'])->name('my.bill-preview');
     Route::get('my/wallet', [MyWalletController::class, 'index'])->name('my.wallet');

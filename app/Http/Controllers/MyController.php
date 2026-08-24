@@ -3,12 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\My\ChangeMyPasswordRequest;
+use App\Http\Requests\My\SaveMyTodayMealRequest;
 use App\Http\Requests\My\StoreMealOffRequest;
+use App\Http\Requests\My\StoreMyGuestMealRequest;
 use App\Http\Requests\My\UpdateMyProfileRequest;
+use App\Models\GuestMeal;
 use App\Models\MealOffRequest;
 use App\Models\Mess;
+use App\Models\MonthlyClosing;
 use App\Models\Payment;
+use App\Services\GuestMealService;
+use App\Services\MealGridService;
 use App\Services\MemberDashboardService;
+use App\Support\MealGridPrefs;
 use App\Support\MealOffStatus;
 use App\Support\StorageProvider;
 use Carbon\Carbon;
@@ -21,6 +28,8 @@ class MyController extends Controller
 {
     public function __construct(
         private readonly MemberDashboardService $dashboards,
+        private readonly MealGridService $mealGrid,
+        private readonly GuestMealService $guestMeals,
     ) {}
 
     public function index(Request $request): View
@@ -39,9 +48,31 @@ class MyController extends Controller
         }
 
         if ($tab === 'meals') {
+            $now = Carbon::now(config('app.timezone'));
+
             $data['mealEntries'] = $member->mealEntries()
-                ->whereBetween('date', [Carbon::now()->startOfMonth()->toDateString(), Carbon::now()->endOfMonth()->toDateString()])
+                ->whereBetween('date', [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()])
                 ->orderBy('date', 'desc')
+                ->get();
+
+            // Today's self-service card: current entry (or the admin's
+            // pre-tick defaults when nothing is saved yet, mirroring the
+            // manager grid), whether this member may edit today, and the
+            // meals the admin shows on the grid.
+            $todayEntry = $data['mealEntries']->first(fn ($entry) => $entry->date->toDateString() === $now->toDateString());
+            $canEditToday = $this->canWriteToday($member->id, $now);
+            $defaultOn = MealGridPrefs::defaultOn();
+
+            $data['visibleMeals'] = MealGridPrefs::visibleMeals();
+            $data['canEditToday'] = $canEditToday;
+            $data['todayMeals'] = collect($data['visibleMeals'])->mapWithKeys(fn ($meal) => [
+                $meal => $todayEntry?->{$meal} ?? ($todayEntry === null && $canEditToday && $defaultOn[$meal]),
+            ])->all();
+            $data['myGuestMeals'] = GuestMeal::query()
+                ->where('member_id', $member->id)
+                ->whereBetween('date', [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()])
+                ->orderBy('date', 'desc')
+                ->latest('id')
                 ->get();
         }
 
@@ -149,5 +180,84 @@ class MyController extends Controller
         ]);
 
         return redirect()->route('my', ['tab' => 'meal-off'])->with('success', __('Meal off request submitted. The manager will review it.'));
+    }
+
+    /**
+     * Member self-service: save the member's OWN meal entry for TODAY only.
+     * The date is pinned server-side; bulkSave re-applies the same guards
+     * (closed day, meal off, disabled day) and only writes visible meals.
+     */
+    public function saveTodayMeal(SaveMyTodayMealRequest $request): RedirectResponse
+    {
+        $member = $request->user()->getMemberOrNull();
+        if (! $member) {
+            return redirect()->route('my')->with('error', __('Your mess account is not set up.'));
+        }
+
+        $today = Carbon::now(config('app.timezone'));
+
+        if (! $this->canWriteToday($member->id, $today)) {
+            return redirect()->route('my', ['tab' => 'meals'])
+                ->with('error', __("Today's meal can't be changed (mess closed, month closed, or you are on meal off)."));
+        }
+
+        $this->mealGrid->bulkSave($today, [[
+            'member_id' => $member->id,
+            'breakfast' => $request->boolean('breakfast'),
+            'lunch' => $request->boolean('lunch'),
+            'dinner' => $request->boolean('dinner'),
+        ]]);
+
+        return redirect()->route('my', ['tab' => 'meals'])
+            ->with('success', __("Today's meal saved."));
+    }
+
+    /**
+     * Member self-service: record a guest meal for TODAY, charged to the
+     * member's own account. Date and member are pinned server-side.
+     */
+    public function storeGuestMeal(StoreMyGuestMealRequest $request): RedirectResponse
+    {
+        $member = $request->user()->getMemberOrNull();
+        if (! $member) {
+            return redirect()->route('my')->with('error', __('Your mess account is not set up.'));
+        }
+
+        $today = Carbon::now(config('app.timezone'));
+
+        if (! $this->canWriteToday($member->id, $today)) {
+            return redirect()->route('my', ['tab' => 'meals'])
+                ->with('error', __("A guest meal can't be added today (mess closed, month closed, or you are on meal off)."));
+        }
+
+        $guestMeal = $this->guestMeals->create([
+            'member_id' => $member->id,
+            'guest_name' => $request->validated('guest_name'),
+            'date' => $today->toDateString(),
+            'meal_type' => $request->validated('meal_type'),
+            'quantity' => $request->validated('quantity'),
+        ]);
+
+        return redirect()->route('my', ['tab' => 'meals'])
+            ->with('success', __('Guest meal for :name recorded — :amount will be added to your bill.', [
+                'name' => $guestMeal->guest_name,
+                'amount' => number_format((float) $guestMeal->charge_amount, 2),
+            ]));
+    }
+
+    /**
+     * Shared guard for member self-service writes: the grid's per-member
+     * rules (active, mess open that day, no meal off, day not disabled) plus
+     * the month-close ledger freeze (D-19) that the mess routes get from the
+     * month.open middleware.
+     */
+    private function canWriteToday(int $memberId, Carbon $today): bool
+    {
+        $monthClosed = MonthlyClosing::query()
+            ->where('year', $today->year)
+            ->where('month', $today->month)
+            ->exists();
+
+        return ! $monthClosed && $this->mealGrid->canMemberEdit($today, $memberId);
     }
 }

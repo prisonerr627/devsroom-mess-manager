@@ -138,6 +138,17 @@ class MealGridService
     }
 
     /**
+     * Whether one member's meals may be edited on a date — same rules the
+     * grid and bulkSave() apply: active member, mess not closed that day, no
+     * approved meal-off covering it, day not disabled for the member. Used by
+     * the member self-service "today's meal" form.
+     */
+    public function canMemberEdit(Carbon $date, int $memberId): bool
+    {
+        return in_array($memberId, $this->editableMemberIdsForDate($date), true);
+    }
+
+    /**
      * @return int[]
      */
     private function editableMemberIdsForDate(Carbon $date): array
