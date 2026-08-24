@@ -73,53 +73,8 @@ class MemberController extends Controller
         if ($createAccount) {
             $email = $member->email;
             $plainPassword = $request->input('password', Str::random(12));
-            $userExisted = false;
-
             try {
-                // firstOrCreate (NOT create): users.email is GLOBALLY unique,
-                // while members.email is only unique per-mess. A User with this
-                // email can already exist — a leftover from an earlier failed
-                // create (the old assignRole 500 committed the User before it
-                // threw) or from a prior invite. User::create would throw a
-                // duplicate-key QueryException here, surfacing as a 500 AFTER
-                // the Member already committed — the "member shows under
-                // /mess/members but not under /dashboard/users" symptom.
-                // firstOrCreate links the member to the existing user instead,
-                // mirroring MemberInviteController.
-                $user = User::firstOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => $member->name,
-                        'password' => Hash::make($plainPassword),
-                    ]
-                );
-                $userExisted = ! $user->wasRecentlyCreated;
-
-                $member->update(['user_id' => $user->id]);
-
-                // Role assignment must NEVER take down member creation.
-                // assignRole() attaches the role, then writes an audit row via
-                // TyroAudit::log() (and clears the role cache). If that
-                // post-attach call throws on the server, the role is already
-                // attached — catch, log, continue.
-                try {
-                    $user->assignRole(Role::firstOrCreate(['slug' => 'mess-member'], ['name' => 'Mess Member']));
-                } catch (\Throwable $e) {
-                    Log::error('member.create.role_assign_failed', [
-                        'member_id' => $member->id,
-                        'user_id' => $user->id,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-
-                // Send credentials email if mail configured and email exists.
-                if ($email && app()->bound('mailer') && count(config('mail.mailers.smtp', [])) > 0) {
-                    try {
-                        Mail::to($email)->send(new MemberCredentialsMail($user, $plainPassword));
-                    } catch (\Throwable) {
-                        // Silently fail — credentials are shown on screen.
-                    }
-                }
+                [, $userExisted] = $this->createLoginAccount($member, $plainPassword);
             } catch (\Throwable $e) {
                 // Account creation failed for a reason firstOrCreate couldn't
                 // absorb. The Member is already saved, so do NOT 500 — log the
@@ -174,7 +129,11 @@ class MemberController extends Controller
     {
         $data = $request->validated();
         $photo = $data['photo'] ?? null;
-        unset($data['photo']);
+        $createAccount = $request->boolean('create_account');
+        // ConvertEmptyStringsToNull makes an untouched password field null,
+        // so null reliably means "leave the password alone".
+        $plainPassword = $request->input('password');
+        unset($data['photo'], $data['create_account'], $data['password'], $data['password_confirmation'], $data['send_credentials']);
 
         $member->update($data);
 
@@ -182,9 +141,120 @@ class MemberController extends Controller
             $this->storePhoto($member, $photo);
         }
 
+        $user = $member->user;
+
+        // Existing login: a filled-in password resets it (blank keeps it).
+        if ($user && $plainPassword !== null) {
+            // The 'hashed' cast on User::password hashes on assignment.
+            $user->update(['password' => $plainPassword]);
+
+            if ($request->boolean('send_credentials') && $user->email && app()->bound('mailer') && count(config('mail.mailers.smtp', [])) > 0) {
+                try {
+                    Mail::to($user->email)->send(new MemberCredentialsMail($user, $plainPassword));
+                } catch (\Throwable) {
+                    // Silently fail — the manager set the password themselves.
+                }
+            }
+
+            return redirect()
+                ->route('mess.members.show', $member)
+                ->with('success', __('Member :name updated and their login password was reset.', ['name' => $member->name]));
+        }
+
+        // No login yet: the checkbox creates one, mirroring the create path.
+        if (! $user && $createAccount) {
+            $plainPassword ??= Str::random(12);
+
+            try {
+                [, $userExisted] = $this->createLoginAccount($member, $plainPassword);
+            } catch (\Throwable $e) {
+                Log::error('member.update.account_failed', [
+                    'member_id' => $member->id,
+                    'email' => $member->email,
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return redirect()
+                    ->route('mess.members.show', $member)
+                    ->with('error', __('Member :name updated, but the login account could not be created. Link a login from the Users page.', ['name' => $member->name]));
+            }
+
+            if ($userExisted) {
+                return redirect()
+                    ->route('mess.members.show', $member)
+                    ->with('success', __('Member :name updated and linked to the existing account (:email).', ['name' => $member->name, 'email' => $member->email]));
+            }
+
+            return redirect()
+                ->route('mess.members.show', $member)
+                ->with('success', __('Member :name updated. Their login email is :email with password: :password', [
+                    'name' => $member->name,
+                    'email' => $member->email,
+                    'password' => $plainPassword,
+                ]));
+        }
+
         return redirect()
             ->route('mess.members.show', $member)
             ->with('success', __('Member :name updated.', ['name' => $member->name]));
+    }
+
+    /**
+     * Create (or link) the login User for a member and assign the mess-member
+     * role. Returns [User $user, bool $userExisted]. Throws only when the User
+     * itself cannot be created/linked; role-assign and credential-mail failures
+     * are absorbed so they never take down the member write.
+     */
+    private function createLoginAccount(Member $member, string $plainPassword): array
+    {
+        $email = $member->email;
+
+        // firstOrCreate (NOT create): users.email is GLOBALLY unique,
+        // while members.email is only unique per-mess. A User with this
+        // email can already exist — a leftover from an earlier failed
+        // create (the old assignRole 500 committed the User before it
+        // threw) or from a prior invite. User::create would throw a
+        // duplicate-key QueryException here, surfacing as a 500 AFTER
+        // the Member already committed — the "member shows under
+        // /mess/members but not under /dashboard/users" symptom.
+        // firstOrCreate links the member to the existing user instead,
+        // mirroring MemberInviteController.
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $member->name,
+                'password' => Hash::make($plainPassword),
+            ]
+        );
+        $userExisted = ! $user->wasRecentlyCreated;
+
+        $member->update(['user_id' => $user->id]);
+
+        // Role assignment must NEVER take down member creation.
+        // assignRole() attaches the role, then writes an audit row via
+        // TyroAudit::log() (and clears the role cache). If that
+        // post-attach call throws on the server, the role is already
+        // attached — catch, log, continue.
+        try {
+            $user->assignRole(Role::firstOrCreate(['slug' => 'mess-member'], ['name' => 'Mess Member']));
+        } catch (\Throwable $e) {
+            Log::error('member.create.role_assign_failed', [
+                'member_id' => $member->id,
+                'user_id' => $user->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        // Send credentials email if mail configured and email exists.
+        if ($email && app()->bound('mailer') && count(config('mail.mailers.smtp', [])) > 0) {
+            try {
+                Mail::to($email)->send(new MemberCredentialsMail($user, $plainPassword));
+            } catch (\Throwable) {
+                // Silently fail — credentials are shown on screen.
+            }
+        }
+
+        return [$user, $userExisted];
     }
 
     public function destroy(Member $member): RedirectResponse
