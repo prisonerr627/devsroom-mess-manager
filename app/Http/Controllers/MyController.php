@@ -90,12 +90,12 @@ class MyController extends Controller
             $user->update($userData);
         }
 
-        // Handle password change
+        // Handle password change (forceFill: password_changed_at is not fillable)
         if ($request->filled('new_password')) {
-            $user->update([
+            $user->forceFill([
                 'password' => Hash::make($request->input('new_password')),
                 'password_changed_at' => now(),
-            ]);
+            ])->save();
         }
 
         if ($photo) {
@@ -120,10 +120,13 @@ class MyController extends Controller
 
     public function changePassword(ChangeMyPasswordRequest $request): RedirectResponse
     {
-        $request->user()->update([
+        // forceFill: password_changed_at is deliberately NOT in User::$fillable,
+        // and update() silently discards non-fillable keys — which left the flag
+        // null and trapped members in the set-password redirect loop.
+        $request->user()->forceFill([
             'password' => Hash::make($request->input('password')),
             'password_changed_at' => now(),
-        ]);
+        ])->save();
 
         return redirect()->intended(route('my'))->with('success', __('Password changed successfully.'));
     }

@@ -48,10 +48,15 @@ class SetPasswordController extends Controller
             ->firstOrFail();
 
         $user = User::where('email', $invitation->email)->firstOrFail();
-        $user->update([
+        // forceFill: email_verified_at / password_changed_at are not fillable,
+        // so update() silently dropped them. password_changed_at also marks the
+        // invite-chosen password as "already set" — without it the member was
+        // immediately bounced into setting a password a second time.
+        $user->forceFill([
             'password' => Hash::make($request->input('password')),
             'email_verified_at' => now(),
-        ]);
+            'password_changed_at' => now(),
+        ])->save();
         $invitation->update(['accepted_at' => now()]);
 
         Auth::login($user);
