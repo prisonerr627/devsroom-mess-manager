@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.4",
         "ext-gd": "*",
+        "ext-pdo_mysql": "*",
         "ext-zip": "*",
         "barryvdh/laravel-dompdf": "^3.1",
         "hasinhayder/tyro": "^1.10",
