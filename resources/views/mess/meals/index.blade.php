@@ -18,9 +18,15 @@
             </div>
         @endif
 
+        @php
+            $mealLabels = collect(['breakfast' => __('Breakfast'), 'lunch' => __('Lunch'), 'dinner' => __('Dinner')])
+                ->only($visibleMeals);
+            $mealInitials = $mealLabels->map(fn ($label) => mb_strtoupper(mb_substr($label, 0, 1)));
+        @endphp
+
         <div class="mb-3 flex flex-wrap items-center gap-2">
             <button type="button" data-preset="all" class="btn btn-secondary">
-                {{ __('Mark all 3 meals') }}
+                {{ __('Mark all :count meals', ['count' => count($visibleMeals)]) }}
             </button>
             <button type="button" data-preset="none" class="btn btn-secondary">
                 {{ __('Mark all 0 meals') }}
@@ -32,9 +38,9 @@
                 <thead class="bg-slate-50">
                     <tr>
                         <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4">{{ __('Member') }}</th>
-                        <th scope="col" class="px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4">{{ __('Breakfast') }}</th>
-                        <th scope="col" class="px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4">{{ __('Lunch') }}</th>
-                        <th scope="col" class="px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4">{{ __('Dinner') }}</th>
+                        @foreach ($mealLabels as $mealLabel)
+                            <th scope="col" class="px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4">{{ $mealLabel }}</th>
+                        @endforeach
                         <th scope="col" class="px-2 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-500 sm:px-4"><span class="sr-only">{{ __('Member quick actions') }}</span></th>
                     </tr>
                 </thead>
@@ -42,6 +48,7 @@
                     @forelse ($rows as $row)
                         <tr @class(['opacity-60' => !$row->editable]) aria-disabled="{{ $row->editable ? 'false' : 'true' }}">
                             <td class="px-3 py-3 text-sm sm:px-4">
+                                <input type="hidden" name="entries[{{ $row->member->id }}][member_id]" value="{{ $row->member->id }}" />
                                 <div class="max-w-[44vw] truncate font-medium text-slate-900 sm:max-w-none">{{ $row->member->name }}</div>
                                 @if ($row->member->room_or_seat)
                                     <div class="truncate text-xs text-slate-500">{{ $row->member->room_or_seat }}</div>
@@ -54,9 +61,8 @@
                                     @endif
                                 @endif
                             </td>
-                            @foreach (['breakfast', 'lunch', 'dinner'] as $meal)
+                            @foreach ($visibleMeals as $meal)
                                 <td class="px-2 py-2 text-center sm:px-4 sm:py-3">
-                                    <input type="hidden" name="entries[{{ $row->member->id }}][member_id]" value="{{ $row->member->id }}" />
                                     {{-- 01-UI-SPEC §2.3 / D-12: every clickable cell ≥44×44px. The native
                                          checkbox stays 20px for visual density, but sits inside an
                                          inline-block label whose touch surface is the full 44px square
@@ -78,10 +84,10 @@
                             <td class="px-2 py-2 text-center sm:px-4 sm:py-3">
                                 @if ($row->editable)
                                     <div class="inline-flex flex-wrap justify-center gap-1" role="group" aria-label="{{ __('Quick actions for :name', ['name' => $row->member->name]) }}">
-                                        <button type="button" data-row-preset="all" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('All on for :name', ['name' => $row->member->name]) }}">B+L+D</button>
-                                        <button type="button" data-row-preset="breakfast" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('Breakfast only for :name', ['name' => $row->member->name]) }}">B</button>
-                                        <button type="button" data-row-preset="lunch" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('Lunch only for :name', ['name' => $row->member->name]) }}">L</button>
-                                        <button type="button" data-row-preset="dinner" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('Dinner only for :name', ['name' => $row->member->name]) }}">D</button>
+                                        <button type="button" data-row-preset="all" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('All on for :name', ['name' => $row->member->name]) }}">{{ $mealInitials->implode('+') }}</button>
+                                        @foreach ($mealLabels as $meal => $mealLabel)
+                                            <button type="button" data-row-preset="{{ $meal }}" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __(':meal only for :name', ['meal' => $mealLabel, 'name' => $row->member->name]) }}">{{ $mealInitials[$meal] }}</button>
+                                        @endforeach
                                         <button type="button" data-row-preset="none" data-row-member="{{ $row->member->id }}" class="btn btn-secondary btn-sm" aria-label="{{ __('All off for :name', ['name' => $row->member->name]) }}">×</button>
                                     </div>
                                 @endif
@@ -89,7 +95,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-600">
+                            <td colspan="{{ count($visibleMeals) + 2 }}" class="px-4 py-6 text-center text-sm text-slate-600">
                                 {{ __('No active members yet. Add members to start recording meals.') }}
                             </td>
                         </tr>

@@ -27,6 +27,7 @@ class MealGridController extends Controller
             'date' => $data['date']->toDateString(),
             'mealOffByMember' => $data['mealOffByMember'],
             'isClosed' => $data['is_closed'] ?? false,
+            'visibleMeals' => $data['visible_meals'],
         ]);
     }
 

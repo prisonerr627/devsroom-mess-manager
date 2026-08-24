@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\MemberDisabledDay;
 use App\Models\Mess;
 use App\Models\MessClosedDay;
+use App\Support\MealGridPrefs;
 use App\Support\MealOffStatus;
 use App\Support\MemberStatus;
 use Carbon\Carbon;
@@ -51,19 +52,26 @@ class MealGridService
 
         $disabledSet = array_flip($disabledMemberIds);
 
-        $rows = $activeMembers->map(function (Member $member) use ($entries, $mealOffByMember, $isClosed, $disabledSet) {
+        // Admin-configured pre-ticks apply only to editable rows with no saved
+        // entry yet — a saved entry (even all-unticked) always wins, and a
+        // meal-off/disabled/closed row must not display phantom ticks.
+        $defaultOn = MealGridPrefs::defaultOn();
+
+        $rows = $activeMembers->map(function (Member $member) use ($entries, $mealOffByMember, $isClosed, $disabledSet, $defaultOn) {
             $entry = $entries->get($member->id);
             $off = $mealOffByMember[$member->id] ?? null;
             $isDisabled = isset($disabledSet[$member->id]);
+            $editable = !$isClosed && $off === null && !$isDisabled;
+            $useDefaults = $entry === null && $editable;
 
             return (object) [
                 'member' => $member,
-                'breakfast' => $entry?->breakfast ?? false,
-                'lunch' => $entry?->lunch ?? false,
-                'dinner' => $entry?->dinner ?? false,
+                'breakfast' => $entry?->breakfast ?? ($useDefaults && $defaultOn['breakfast']),
+                'lunch' => $entry?->lunch ?? ($useDefaults && $defaultOn['lunch']),
+                'dinner' => $entry?->dinner ?? ($useDefaults && $defaultOn['dinner']),
                 'entry_id' => $entry?->id,
                 'meal_off_until' => $off?->to_date,
-                'editable' => !$isClosed && $off === null && !$isDisabled,
+                'editable' => $editable,
             ];
         });
 
@@ -72,6 +80,7 @@ class MealGridService
             'date' => $date,
             'mealOffByMember' => $mealOffByMember,
             'is_closed' => $isClosed,
+            'visible_meals' => MealGridPrefs::visibleMeals(),
         ];
     }
 
@@ -92,18 +101,22 @@ class MealGridService
                     continue;
                 }
 
+                // Only write meals the grid actually shows: a hidden column
+                // has no checkbox in the form, and treating its absence as
+                // "false" would wipe stored values every save. Hidden meals
+                // keep their DB value (new rows get the column default, false).
+                $values = ['entered_by' => $userId];
+                foreach (MealGridPrefs::visibleMeals() as $meal) {
+                    $values[$meal] = (bool) ($entry[$meal] ?? false);
+                }
+
                 MealEntry::updateOrCreate(
                     [
                         'mess_id' => $messId,
                         'member_id' => $memberId,
                         'date' => $date->toDateString(),
                     ],
-                    [
-                        'breakfast' => (bool) ($entry['breakfast'] ?? false),
-                        'lunch' => (bool) ($entry['lunch'] ?? false),
-                        'dinner' => (bool) ($entry['dinner'] ?? false),
-                        'entered_by' => $userId,
-                    ]
+                    $values
                 );
             }
         });

@@ -7,6 +7,7 @@ use App\Http\Requests\Mess\UpdateMessRequest;
 use App\Models\Mess;
 use App\Models\Setting;
 use App\Services\BillPreviewService;
+use App\Support\MealGridPrefs;
 use App\Support\MealType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -24,6 +25,7 @@ class MessConfigController extends Controller
         return view('mess.settings.edit', [
             'mess' => $mess,
             'mealValues' => $this->mealValues($mess->id),
+            'mealGridPrefs' => MealGridPrefs::get(),
         ]);
     }
 
@@ -33,6 +35,7 @@ class MessConfigController extends Controller
         $mess->update($request->validated());
 
         $this->persistMealValues($mess->id, $request);
+        $this->persistMealGridPrefs($mess->id, $request);
 
         // Weights feed every meal total / rate, so drop their cache + the
         // current month's bill-preview so the next read recomputes.
@@ -95,5 +98,37 @@ class MessConfigController extends Controller
                 ],
             );
         }
+    }
+
+    /**
+     * Persist the meal grid preferences (visible columns + pre-ticked
+     * defaults). Only runs when the form actually contained the section —
+     * unchecked checkboxes are absent from the request, so without the
+     * marker an unrelated form post would wrongly hide every meal.
+     */
+    private function persistMealGridPrefs(int $messId, UpdateMessRequest $request): void
+    {
+        if (! $request->boolean('meal_grid_prefs_present')) {
+            return;
+        }
+
+        $prefs = ['visible' => [], 'default_on' => []];
+
+        foreach (MealType::ALL as $meal) {
+            $prefs['visible'][$meal] = (bool) $request->input("meal_visible.$meal", false);
+            $prefs['default_on'][$meal] = (bool) $request->input("meal_default.$meal", false);
+        }
+
+        Setting::updateOrCreate(
+            ['mess_id' => $messId, 'key' => MealGridPrefs::KEY],
+            [
+                'value' => $prefs,
+                'type' => 'json',
+                'group' => 'meals',
+                'description' => 'Meal grid visibility and default ticks',
+            ],
+        );
+
+        MealGridPrefs::forgetFor($messId);
     }
 }

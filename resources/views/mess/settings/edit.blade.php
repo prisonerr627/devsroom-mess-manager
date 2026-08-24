@@ -86,6 +86,34 @@
                 </div>
             </fieldset>
 
+            <fieldset class="flex flex-col gap-3 border-t border-slate-200 pt-4">
+                <div>
+                    <legend class="text-sm font-semibold text-slate-900">{{ __('Meal grid') }}</legend>
+                    <p class="text-xs text-slate-500">{{ __('Choose which meals appear on the meal grids, and which come pre-ticked for days that have not been saved yet.') }}</p>
+                </div>
+                <input type="hidden" name="meal_grid_prefs_present" value="1">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    @foreach (['breakfast' => __('Breakfast'), 'lunch' => __('Lunch'), 'dinner' => __('Dinner')] as $meal => $label)
+                        <div class="flex flex-col gap-2 rounded-lg border border-slate-200 p-3">
+                            <span class="text-sm font-medium text-slate-900">{{ $label }}</span>
+                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                                <input type="checkbox" name="meal_visible[{{ $meal }}]" value="1"
+                                    @checked(old('meal_grid_prefs_present') ? old("meal_visible.$meal") : $mealGridPrefs['visible'][$meal])
+                                    class="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring focus:ring-emerald-600 focus:ring-offset-1">
+                                {{ __('Show on grid') }}
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                                <input type="checkbox" name="meal_default[{{ $meal }}]" value="1"
+                                    @checked(old('meal_grid_prefs_present') ? old("meal_default.$meal") : $mealGridPrefs['default_on'][$meal])
+                                    class="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring focus:ring-emerald-600 focus:ring-offset-1">
+                                {{ __('Ticked by default') }}
+                            </label>
+                        </div>
+                    @endforeach
+                </div>
+                @error('meal_visible') <p class="text-sm text-red-700">{{ $message }}</p> @enderror
+            </fieldset>
+
             <div class="flex flex-wrap items-center gap-2">
                 <button type="submit" class="btn btn-primary">
                     {{ __('Save changes') }}
