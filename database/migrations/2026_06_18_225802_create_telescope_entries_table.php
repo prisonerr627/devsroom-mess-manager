@@ -21,7 +21,10 @@ return new class extends Migration
     {
         $schema = Schema::connection($this->getConnection());
 
-        $schema->create('telescope_entries', function (Blueprint $table) {
+        // Guarded with hasTable: an earlier deploy created some of these
+        // tables but crashed before this migration was recorded, and MySQL
+        // cannot roll back DDL. The guards let a re-run complete cleanly.
+        $schema->hasTable('telescope_entries') || $schema->create('telescope_entries', function (Blueprint $table) {
             $table->bigIncrements('sequence');
             $table->uuid('uuid');
             $table->uuid('batch_id');
@@ -38,7 +41,7 @@ return new class extends Migration
             $table->index(['type', 'should_display_on_index']);
         });
 
-        $schema->create('telescope_entries_tags', function (Blueprint $table) {
+        $schema->hasTable('telescope_entries_tags') || $schema->create('telescope_entries_tags', function (Blueprint $table) {
             $table->uuid('entry_uuid');
             $table->string('tag');
 
@@ -51,7 +54,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
         });
 
-        $schema->create('telescope_monitoring', function (Blueprint $table) {
+        $schema->hasTable('telescope_monitoring') || $schema->create('telescope_monitoring', function (Blueprint $table) {
             $table->string('tag')->primary();
         });
     }
