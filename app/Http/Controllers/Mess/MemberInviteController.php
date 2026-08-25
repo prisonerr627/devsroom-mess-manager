@@ -38,6 +38,11 @@ class MemberInviteController extends Controller
 
         $user->assignRole(Role::firstOrCreate(['slug' => 'mess-member'], ['name' => 'Mess Member']));
 
+        // Tenant link (users.mess_id drives Mess::activeId() for this login).
+        if ($user->mess_id === null) {
+            $user->forceFill(['mess_id' => $messId])->save();
+        }
+
         $token = Str::random(48);
         MemberInvitation::create([
             'mess_id' => $messId,

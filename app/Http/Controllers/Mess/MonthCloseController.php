@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mess\TriggerMonthCloseRequest;
 use App\Jobs\CloseMonthJob;
+use App\Models\Mess;
 use App\Models\MonthlyClosing;
 use App\Services\BillPreviewService;
 use Carbon\Carbon;
@@ -46,7 +47,7 @@ class MonthCloseController extends Controller
                 ->with('info', __('This month is already closed.'));
         }
 
-        CloseMonthJob::dispatch($year, $month, (int) $request->user()->id);
+        CloseMonthJob::dispatch($year, $month, (int) $request->user()->id, Mess::activeId());
 
         return redirect()
             ->route('mess.close.index')

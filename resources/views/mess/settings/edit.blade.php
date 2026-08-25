@@ -5,6 +5,12 @@
         <p class="mt-1 text-sm text-slate-600">{{ __('Update name, address, rent, meal values, and currency.') }}</p>
     </header>
 
+    <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-900">{{ __('Join code') }}</h2>
+        <p class="mt-1 text-xs text-slate-600">{{ __('Share this code with people who should join this mess. They sign up, choose "Join a mess with a code", and become members.') }}</p>
+        <div class="mt-3 inline-block rounded-lg border border-emerald-300 bg-white px-4 py-2 font-mono text-2xl font-semibold tracking-[0.3em] text-emerald-800 select-all">{{ $mess->join_code ?? '—' }}</div>
+    </div>
+
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
         <form method="POST" action="{{ route('mess.settings.update') }}" class="flex flex-col gap-4">
             @csrf

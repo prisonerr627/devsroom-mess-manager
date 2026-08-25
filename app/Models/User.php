@@ -9,6 +9,7 @@ use HasinHayder\TyroLogin\Traits\HasTwoFactorAuth;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -85,6 +86,15 @@ class User extends Authenticatable
     public function members(): HasMany
     {
         return $this->hasMany(Member::class, 'user_id');
+    }
+
+    /**
+     * The mess this user belongs to (tenant). Null until a signed-up user
+     * joins one with a code or creates one — see Mess::activeId().
+     */
+    public function mess(): BelongsTo
+    {
+        return $this->belongsTo(Mess::class);
     }
 
     public function getMemberOrNull(): ?Member

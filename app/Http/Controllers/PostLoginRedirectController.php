@@ -12,11 +12,12 @@ class PostLoginRedirectController extends Controller
     {
         $user = $request->user();
 
-        if ($user?->hasRole('super-admin')) {
-            if (! Mess::query()->exists()) {
-                return redirect()->route('onboarding.create');
-            }
+        // Mirrors RootController: no mess yet -> the join/create chooser.
+        if ($user && Mess::activeId() === null) {
+            return redirect()->route('join.choose');
+        }
 
+        if ($user?->hasRole('super-admin')) {
             return redirect('/dashboard');
         }
 

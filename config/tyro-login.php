@@ -140,11 +140,10 @@ return [
     |--------------------------------------------------------------------------
     */
     'registration' => [
-        // Whether registration is enabled.
-        // Off by default: this is a closed mess system — members join via a
-        // manager-created login or an invite link. Public signup only produced
-        // roleless accounts that RootController immediately logged back out.
-        'enabled' => env('TYRO_LOGIN_REGISTRATION_ENABLED', false),
+        // Whether registration is enabled. After signing up, a user lands on
+        // the /join chooser: join an existing mess with its code (member) or
+        // create a new mess (manager).
+        'enabled' => env('TYRO_LOGIN_REGISTRATION_ENABLED', true),
 
         // Whether to automatically log in the user after registration
         'auto_login' => env('TYRO_LOGIN_REGISTRATION_AUTO_LOGIN', true),
@@ -162,8 +161,9 @@ return [
     |
     */
     'tyro' => [
-        // Whether to assign a default role to new users
-        'assign_default_role' => env('TYRO_LOGIN_ASSIGN_DEFAULT_ROLE', true),
+        // Whether to assign a default role to new users. Off: the /join
+        // chooser assigns manager (create mess) or mess-member (join by code).
+        'assign_default_role' => env('TYRO_LOGIN_ASSIGN_DEFAULT_ROLE', false),
 
         // The default role slug to assign to new users. 'mess-member', not
         // 'user': the 'user' role was dropped and reassigned by migration —

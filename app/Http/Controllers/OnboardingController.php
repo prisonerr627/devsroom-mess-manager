@@ -5,15 +5,22 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Onboarding\CreateMessRequest;
 use App\Models\Mess;
 use App\Models\Setting;
+use HasinHayder\Tyro\Models\Role;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class OnboardingController extends Controller
 {
+    /**
+     * "Create a mess": available to any logged-in user who is not attached
+     * to a mess yet (fresh signup, or the super-admin on a new install).
+     * The creator becomes the mess's manager.
+     */
     public function create(): View|RedirectResponse
     {
-        if (Mess::withoutGlobalScopes()->exists()) {
-            return redirect()->route('home');
+        if (Mess::activeId() !== null) {
+            return redirect('/');
         }
 
         return view('onboarding.create');
@@ -21,19 +28,36 @@ class OnboardingController extends Controller
 
     public function store(CreateMessRequest $request): RedirectResponse
     {
-        if (Mess::withoutGlobalScopes()->exists()) {
-            return redirect()->route('home');
+        if (Mess::activeId() !== null) {
+            return redirect('/');
         }
 
         $data = $request->validated();
+        $user = $request->user();
 
-        $mess = Mess::create([
-            'name' => $data['name'],
-            'address' => $data['address'] ?? null,
-            'monthly_rent' => $data['monthly_rent'],
-            'manager_contact' => $data['manager_contact'] ?? null,
-            'status' => 'active',
-        ]);
+        $mess = DB::transaction(function () use ($data, $user): Mess {
+            $mess = Mess::create([
+                'name' => $data['name'],
+                'address' => $data['address'] ?? null,
+                'monthly_rent' => $data['monthly_rent'],
+                'manager_contact' => $data['manager_contact'] ?? null,
+                'status' => 'active',
+                'join_code' => Mess::generateJoinCode(),
+                'created_by' => $user->id,
+            ]);
+
+            $user->forceFill(['mess_id' => $mess->id])->save();
+
+            // The creator manages this mess. A super-admin keeps their role.
+            if (! $user->hasRole('super-admin')) {
+                $user->assignRole(Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager']));
+            }
+
+            return $mess;
+        });
+
+        // Settings below are mess-scoped: make sure the scope sees the new mess.
+        Mess::setActiveId($mess->id);
 
         $settings = [
             ['key' => 'meal_breakfast', 'value' => ['amount' => (float) $data['meal_breakfast']], 'type' => 'number', 'group' => 'meals', 'description' => 'Breakfast meal value'],
@@ -48,8 +72,7 @@ class OnboardingController extends Controller
             Setting::create(array_merge($row, ['mess_id' => $mess->id]));
         }
 
-        return redirect()
-            ->route('home')
-            ->with('success', __('Your mess has been created. Welcome aboard!'));
+        return redirect($user->hasRole('super-admin') ? '/dashboard' : route('home'))
+            ->with('success', __('Your mess has been created. Share join code :code with your members so they can join.', ['code' => $mess->join_code]));
     }
 }

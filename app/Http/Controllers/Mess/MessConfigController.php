@@ -20,7 +20,7 @@ class MessConfigController extends Controller
 
     public function edit(): View
     {
-        $mess = Mess::firstOrFail();
+        $mess = Mess::findOrFail(Mess::activeId());
 
         return view('mess.settings.edit', [
             'mess' => $mess,
@@ -31,7 +31,7 @@ class MessConfigController extends Controller
 
     public function update(UpdateMessRequest $request): RedirectResponse
     {
-        $mess = Mess::firstOrFail();
+        $mess = Mess::findOrFail(Mess::activeId());
         $mess->update($request->validated());
 
         $this->persistMealValues($mess->id, $request);

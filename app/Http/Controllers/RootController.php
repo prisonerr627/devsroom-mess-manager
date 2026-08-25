@@ -22,6 +22,12 @@ class RootController extends Controller
             return redirect()->guest('/login');
         }
 
+        // Signed up but not attached to any mess yet: choose join-with-code
+        // or create-mess before any role-based landing page makes sense.
+        if (Mess::activeId() === null) {
+            return redirect()->route('join.choose');
+        }
+
         // Role-aware landing page. This controller is reached on the normal
         // login flow: a logged-out visitor hits "/" → guest('/login') stores
         // url.intended="/" → they log in → redirect()->intended('/post-login')
@@ -32,10 +38,6 @@ class RootController extends Controller
         // PostLoginRedirectController so the two never disagree on where a role
         // belongs.
         if ($user->hasRole('super-admin')) {
-            if (! Mess::query()->exists()) {
-                return redirect()->route('onboarding.create');
-            }
-
             return redirect('/dashboard');
         }
 

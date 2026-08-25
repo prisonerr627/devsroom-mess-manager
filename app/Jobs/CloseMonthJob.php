@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Mess;
 use App\Services\MonthCloseService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,10 +27,18 @@ class CloseMonthJob implements ShouldQueue
         public readonly int $year,
         public readonly int $month,
         public readonly int $closedBy,
+        public readonly ?int $messId = null,
     ) {}
 
     public function handle(MonthCloseService $service): void
     {
+        // Queue workers have no logged-in user to resolve the tenant from —
+        // pin the mess this close was requested for (older queued payloads
+        // without it keep the legacy first-mess fallback).
+        if ($this->messId !== null) {
+            Mess::setActiveId($this->messId);
+        }
+
         $service->close($this->year, $this->month, $this->closedBy);
 
         // D-05: best-effort post-close backup. Captures the highest-value

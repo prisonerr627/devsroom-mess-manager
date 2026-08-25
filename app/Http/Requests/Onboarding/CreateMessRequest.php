@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Onboarding;
 
+use App\Models\Mess;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,9 +10,8 @@ class CreateMessRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = $this->user();
-
-        return $user && $user->hasRole('super-admin');
+        // Any logged-in user who does not belong to a mess yet may create one.
+        return $this->user() !== null && Mess::activeId() === null;
     }
 
     public function rules(): array

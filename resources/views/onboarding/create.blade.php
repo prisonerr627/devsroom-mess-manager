@@ -2,7 +2,7 @@
 @section('content')
     <header class="mb-6">
         <h1 class="text-2xl font-semibold leading-tight text-slate-900">{{ __('Create your mess') }}</h1>
-        <p class="mt-1 text-sm text-slate-600">{{ __('This is the only mess this installation will manage. You can edit it later from the dashboard.') }}</p>
+        <p class="mt-1 text-sm text-slate-600">{{ __('You will manage this mess. Members join it with the join code shown in Mess settings. You can edit everything later.') }}</p>
     </header>
 
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">

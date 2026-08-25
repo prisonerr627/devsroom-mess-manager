@@ -230,6 +230,11 @@ class MemberController extends Controller
 
         $member->update(['user_id' => $user->id]);
 
+        // Tenant link (users.mess_id drives Mess::activeId() for this login).
+        if ($user->mess_id === null) {
+            $user->forceFill(['mess_id' => $member->mess_id])->save();
+        }
+
         // Role assignment must NEVER take down member creation.
         // assignRole() attaches the role, then writes an audit row via
         // TyroAudit::log() (and clears the role cache). If that

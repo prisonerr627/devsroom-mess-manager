@@ -37,6 +37,7 @@ use App\Http\Controllers\My\MyWalletController;
 use App\Http\Controllers\MyController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\JoinController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PostLoginRedirectController;
 use App\Http\Controllers\RootController;
@@ -60,7 +61,15 @@ Route::middleware(RedirectIfSetupCompleted::class)->group(function () {
 });
 
 // Onboarding (super-admin only)
-Route::middleware(['auth', 'role:super-admin', EnsureMessExists::class])->group(function () {
+// Post-signup chooser + "create a mess" (any logged-in user without a mess;
+// the controllers redirect users who already belong to one).
+Route::middleware('auth')->group(function () {
+    Route::get('/join', [JoinController::class, 'choose'])->name('join.choose');
+    Route::get('/join/code', [JoinController::class, 'showJoin'])->name('join.code');
+    Route::post('/join/code', [JoinController::class, 'join'])
+        ->middleware('throttle:10,1')
+        ->name('join.code.store');
+
     Route::get('/onboarding', [OnboardingController::class, 'create'])->name('onboarding.create');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 });

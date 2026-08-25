@@ -9,16 +9,21 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureMessExists
 {
+    /**
+     * Every mess-scoped page needs a resolved tenant. A user who has not yet
+     * joined (with a code) or created a mess has Mess::activeId() === null and
+     * is sent to the chooser instead of seeing an empty — or worse, someone
+     * else's — mess.
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip the check on the onboarding routes themselves to avoid
-        // self-redirect loops while creating the first mess.
-        if ($request->routeIs('onboarding.*')) {
+        // Skip on the chooser / onboarding routes themselves to avoid loops.
+        if ($request->routeIs('onboarding.*', 'join.*')) {
             return $next($request);
         }
 
-        if (Mess::query()->doesntExist()) {
-            return redirect()->route('onboarding.create');
+        if (Mess::activeId() === null) {
+            return redirect()->route('join.choose');
         }
 
         return $next($request);
