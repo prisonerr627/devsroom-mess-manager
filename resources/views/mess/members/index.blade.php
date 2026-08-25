@@ -16,9 +16,9 @@
     <form method="POST" action="{{ route('mess.members.link') }}" class="mb-4 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-end">
         @csrf
         <div class="flex flex-1 flex-col gap-1">
-            <label for="link-identifier" class="text-sm font-medium text-slate-900">{{ __('Add a signed-up user by username or mobile') }}</label>
+            <label for="link-identifier" class="text-sm font-medium text-slate-900">{{ __('Add a signed-up user by username') }}</label>
             <p class="text-xs text-slate-600">{{ __('For people who already created an account but have not joined a mess yet — no join code needed.') }}</p>
-            <input type="text" name="identifier" id="link-identifier" value="{{ old('identifier') }}" placeholder="{{ __('username or 01700000000') }}" autocomplete="off" class="input">
+            <input type="text" name="identifier" id="link-identifier" value="{{ old('identifier') }}" placeholder="{{ __('username') }}" autocomplete="off" autocapitalize="none" spellcheck="false" class="input">
         </div>
         <button type="submit" class="btn btn-secondary">{{ __('Add to mess') }}</button>
     </form>

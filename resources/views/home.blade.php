@@ -52,7 +52,7 @@
         <div class="mb-4 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-semibold text-slate-900">{{ __('Mess join code') }}</p>
-                <p class="text-xs text-slate-600">{{ __('Members sign up, choose "Join a mess with a code", and enter this. You can also add signed-up users by username or mobile from the Members page.') }}</p>
+                <p class="text-xs text-slate-600">{{ __('Members sign up, choose "Join a mess with a code", and enter this. You can also add signed-up users by username from the Members page.') }}</p>
             </div>
             <span class="inline-block rounded-lg border border-emerald-300 bg-white px-4 py-2 font-mono text-xl font-semibold tracking-[0.3em] text-emerald-800 select-all">{{ $joinCode }}</span>
         </div>

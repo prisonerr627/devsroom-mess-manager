@@ -114,26 +114,22 @@ class MemberController extends Controller
     }
 
     /**
-     * Add a signed-up user to this mess by username or mobile number. Only
-     * users not yet attached to any mess can be added this way; the member
-     * record is created from their signup details and their login is linked.
+     * Add a signed-up user to this mess by username. Only users not yet
+     * attached to any mess can be added this way; the member record is
+     * created from their signup details and their login is linked.
      */
     public function link(Request $request): RedirectResponse
     {
-        $identifier = trim((string) $request->input('identifier'));
-        if ($identifier === '') {
-            return redirect()->route('mess.members.index')->with('error', __('Enter a username or mobile number.'));
+        $username = strtolower(ltrim(trim((string) $request->input('identifier')), '@'));
+        if ($username === '') {
+            return redirect()->route('mess.members.index')->with('error', __('Enter a username.'));
         }
 
-        $normalizedMobile = preg_replace('/[\s\-]/', '', $identifier);
-        $user = User::query()
-            ->where('username', strtolower($identifier))
-            ->orWhere('mobile', $normalizedMobile)
-            ->first();
+        $user = User::query()->where('username', $username)->first();
 
         if (! $user) {
             return redirect()->route('mess.members.index')
-                ->with('error', __('No signed-up user matches ":id". Ask them to sign up first, or add them as a member manually.', ['id' => $identifier]));
+                ->with('error', __('No signed-up user has the username ":username". Ask them to sign up first, or add them as a member manually.', ['username' => $username]));
         }
 
         if ($user->mess_id !== null) {

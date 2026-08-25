@@ -29,7 +29,7 @@
                     <label for="username" class="text-sm font-medium">{{ __('Username') }}<span class="text-red-600" aria-hidden="true">*</span></label>
                     <input type="text" name="username" id="username" value="{{ old('username') }}" required minlength="3" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. rahim_99"
                         class="input @error('username') border-red-500 @enderror">
-                    <p class="text-xs text-slate-500">{{ __('Your manager can add you to a mess by this username.') }}</p>
+                    <p class="text-xs text-slate-500">{{ __('Your manager can add you to a mess by this username — share it with them.') }}</p>
                     @error('username') <p class="text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
 
