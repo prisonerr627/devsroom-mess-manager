@@ -58,6 +58,13 @@ class Mess extends Model implements AuditableContract
         if ($user !== null) {
             $id = $user->mess_id;
 
+            // An unattached super-admin is the installation owner (the /setup
+            // account, created before any mess exists): show them the first
+            // mess — legacy single-mess behaviour — instead of the join chooser.
+            if ($id === null && $user->hasRole('super-admin')) {
+                $id = static::query()->orderBy('id')->value('id');
+            }
+
             // Cache per request only once a user is known, so a scoped query
             // that runs before auth is resolved cannot poison the tenant.
             self::$activeIdCache = $id !== null ? (int) $id : null;
