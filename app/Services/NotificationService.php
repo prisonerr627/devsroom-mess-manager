@@ -81,12 +81,18 @@ class NotificationService
         $recipients = User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['manager', 'super-admin']))
             ->when($activeMessId !== null, function ($q) use ($activeMessId) {
-                // Super-admins are always included (cross-mess role). Managers must
-                // belong to the active mess via a Member row whose mess_id matches.
+                // Every mess creator is a super-admin of THEIR mess, so recipients
+                // must be linked to the active mess: users.mess_id (creators,
+                // joined members, manager-created logins) or a Member row. A
+                // super-admin with no mess at all (platform owner from /setup on
+                // a fresh install) is still included.
                 $q->where(function ($inner) use ($activeMessId) {
-                    $inner->whereHas('roles', fn ($r) => $r->where('slug', 'super-admin'))
-                        ->orWhere('users.mess_id', $activeMessId)
-                        ->orWhereHas('members', fn ($m) => $m->where('members.mess_id', $activeMessId));
+                    $inner->where('users.mess_id', $activeMessId)
+                        ->orWhereHas('members', fn ($m) => $m->where('members.mess_id', $activeMessId))
+                        ->orWhere(function ($platform) {
+                            $platform->whereNull('users.mess_id')
+                                ->whereHas('roles', fn ($r) => $r->where('slug', 'super-admin'));
+                        });
                 });
             })
             ->get();

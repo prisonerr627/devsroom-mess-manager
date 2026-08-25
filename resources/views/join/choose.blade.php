@@ -15,7 +15,7 @@
 
             <a href="{{ route('onboarding.create') }}" class="block rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-emerald-400 hover:shadow">
                 <h2 class="text-lg font-semibold text-slate-900">{{ __('Create a new mess') }}</h2>
-                <p class="mt-2 text-sm text-slate-600">{{ __('Set up a mess and become its manager. You will get a join code to share with your members.') }}</p>
+                <p class="mt-2 text-sm text-slate-600">{{ __('Set up a mess and become its super admin. You will get a join code to share with your members.') }}</p>
                 <span class="btn btn-secondary mt-4">{{ __('Create mess') }}</span>
             </a>
         </div>
