@@ -48,6 +48,12 @@
         </a>
     @endif
 
+    @if (($pendingGroceries ?? 0) > 0)
+        <a href="{{ route('mess.groceries.index') }}" class="mb-4 block rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 transition-colors hover:bg-amber-100">
+            {{ trans_choice(':count grocery purchase submitted by a member awaiting review|:count grocery purchases submitted by members awaiting review', $pendingGroceries) }}
+        </a>
+    @endif
+
     {{-- DASH-01: stat cards --}}
     <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <x-stat-card

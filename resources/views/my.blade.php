@@ -15,6 +15,7 @@
                 ['key' => 'profile', 'label' => __('Profile'), 'url' => route('my', ['tab' => 'profile'])],
                 ['key' => 'meals', 'label' => __('My meals'), 'url' => route('my', ['tab' => 'meals'])],
                 ['key' => 'meal-off', 'label' => __('Meal off'), 'url' => route('my', ['tab' => 'meal-off'])],
+                ['key' => 'groceries', 'label' => __('Groceries'), 'url' => route('my', ['tab' => 'groceries'])],
                 ['key' => 'payments', 'label' => __('Payments'), 'url' => route('my', ['tab' => 'payments'])],
                 ['key' => 'reports', 'label' => __('My reports'), 'url' => route('my', ['tab' => 'reports'])],
             ];
@@ -55,6 +56,8 @@
                     @include('my._meal-off', ['member' => $member, 'mealOffRequests' => $mealOffRequests ?? collect()])
                 @elseif ($tab === 'meals')
                     @include('my._meals', ['member' => $member, 'mealEntries' => $mealEntries ?? collect()])
+                @elseif ($tab === 'groceries')
+                    @include('my._groceries', ['member' => $member, 'grocerySubmissions' => $grocerySubmissions ?? collect()])
                 @elseif ($tab === 'payments')
                     @include('my._payments', ['payments' => $payments ?? collect()])
                 @elseif ($tab === 'balance')

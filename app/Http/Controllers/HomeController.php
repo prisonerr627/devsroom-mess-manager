@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GrocerySubmission;
 use App\Models\Mess;
+use App\Support\GroceryStatus;
 use App\Services\DashboardService;
 use Illuminate\Contracts\View\View;
 
@@ -26,6 +28,7 @@ class HomeController extends Controller
         return view('home', [
             'cards' => $this->dashboards->managerCards(),
             'pendingMealOff' => $this->dashboards->pendingMealOffCount(),
+            'pendingGroceries' => GrocerySubmission::query()->where('status', GroceryStatus::PENDING)->count(),
             'membersWithDues' => $this->dashboards->membersWithDues($messId),
             'bazarVsCollection' => $this->dashboards->bazarVsCollection($messId),
             'expenseCategoryMix' => $this->dashboards->expenseCategoryMix($messId),

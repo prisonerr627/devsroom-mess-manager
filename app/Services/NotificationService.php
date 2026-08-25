@@ -85,6 +85,7 @@ class NotificationService
                 // belong to the active mess via a Member row whose mess_id matches.
                 $q->where(function ($inner) use ($activeMessId) {
                     $inner->whereHas('roles', fn ($r) => $r->where('slug', 'super-admin'))
+                        ->orWhere('users.mess_id', $activeMessId)
                         ->orWhereHas('members', fn ($m) => $m->where('members.mess_id', $activeMessId));
                 });
             })

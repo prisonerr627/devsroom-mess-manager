@@ -9,6 +9,7 @@ use App\Http\Controllers\Mess\BillPreviewController;
 use App\Http\Controllers\Mess\DueReminderController;
 use App\Http\Controllers\Mess\ExpenseCategoryController;
 use App\Http\Controllers\Mess\ExpenseController;
+use App\Http\Controllers\Mess\GrocerySubmissionController;
 use App\Http\Controllers\Mess\GuestMealController;
 use App\Http\Controllers\Mess\ManagerMealOffController;
 use App\Http\Controllers\Mess\MealGridController;
@@ -184,6 +185,11 @@ Route::middleware(['auth', 'roles:super-admin,manager', EnsureMessExists::class]
     Route::patch('mess/meal-off/{mealOffRequest}/reject', [MealOffApprovalController::class, 'reject'])->name('mess.meal-off.reject')
         ->middleware('month.open');
 
+    // Member grocery submissions (manager review -> real bazar expense).
+    Route::get('mess/groceries', [GrocerySubmissionController::class, 'index'])->name('mess.groceries.index');
+    Route::patch('mess/groceries/{grocerySubmission}/approve', [GrocerySubmissionController::class, 'approve'])->name('mess.groceries.approve');
+    Route::patch('mess/groceries/{grocerySubmission}/reject', [GrocerySubmissionController::class, 'reject'])->name('mess.groceries.reject');
+
     Route::get('mess/expenses', [ExpenseController::class, 'index'])->name('mess.expenses.index');
     Route::get('mess/expenses/create', [ExpenseController::class, 'create'])->name('mess.expenses.create');
     Route::post('mess/expenses', [ExpenseController::class, 'store'])->name('mess.expenses.store')
@@ -302,6 +308,10 @@ Route::middleware(['auth', 'roles:mess-member', 'password.change'])->group(funct
     Route::post('my/guest-meals', [MyController::class, 'storeGuestMeal'])
         ->middleware('throttle:30,1')
         ->name('my.guest-meals.store');
+    // Member grocery (bazar) purchase claims — reviewed by a manager.
+    Route::post('my/groceries', [MyController::class, 'storeGrocery'])
+        ->middleware('throttle:20,1')
+        ->name('my.groceries.store');
     Route::get('my/payments', [MyPaymentController::class, 'index'])->name('my.payments');
     Route::get('my/bill-preview', [MyBillPreviewController::class, 'index'])->name('my.bill-preview');
     Route::get('my/wallet', [MyWalletController::class, 'index'])->name('my.wallet');

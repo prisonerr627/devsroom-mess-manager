@@ -18,12 +18,20 @@ final class NotificationType
      */
     public const BACKUP_FAILED = 'backup_failed';
 
+    /** A member filed a grocery purchase claim (to managers). */
+    public const GROCERY_SUBMITTED = 'grocery_submitted';
+
+    /** A manager approved/rejected a member's grocery claim (to the member). */
+    public const GROCERY_DECISION = 'grocery_decision';
+
     public const ALL = [
         self::CLOSE_COMPLETE,
         self::MEAL_OFF_DECISION,
         self::PAYMENT_RECORDED,
         self::DUE_REMINDER,
         self::BACKUP_FAILED,
+        self::GROCERY_SUBMITTED,
+        self::GROCERY_DECISION,
     ];
 
     public const LABELS = [
@@ -32,5 +40,7 @@ final class NotificationType
         self::PAYMENT_RECORDED => 'Payment recorded',
         self::DUE_REMINDER => 'Due reminder',
         self::BACKUP_FAILED => 'Backup failed',
+        self::GROCERY_SUBMITTED => 'Grocery purchase submitted',
+        self::GROCERY_DECISION => 'Grocery purchase decision',
     ];
 }

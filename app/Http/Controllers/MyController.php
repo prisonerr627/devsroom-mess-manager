@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\My\ChangeMyPasswordRequest;
 use App\Http\Requests\My\SaveMyTodayMealRequest;
+use App\Http\Requests\My\StoreGrocerySubmissionRequest;
 use App\Http\Requests\My\StoreMealOffRequest;
 use App\Http\Requests\My\StoreMyGuestMealRequest;
 use App\Http\Requests\My\UpdateMyProfileRequest;
+use App\Models\GrocerySubmission;
 use App\Models\GuestMeal;
 use App\Models\MealOffRequest;
 use App\Models\Mess;
 use App\Models\MonthlyClosing;
 use App\Models\Payment;
+use App\Services\GrocerySubmissionService;
 use App\Services\GuestMealService;
 use App\Services\MealGridService;
 use App\Services\MemberDashboardService;
@@ -30,6 +33,7 @@ class MyController extends Controller
         private readonly MemberDashboardService $dashboards,
         private readonly MealGridService $mealGrid,
         private readonly GuestMealService $guestMeals,
+        private readonly GrocerySubmissionService $groceries,
     ) {}
 
     public function index(Request $request): View
@@ -81,6 +85,15 @@ class MyController extends Controller
                 ->orderBy('requested_at', 'desc')
                 ->limit(20)
                 ->get();
+        }
+
+        if ($tab === 'groceries') {
+            $data['grocerySubmissions'] = GrocerySubmission::query()
+                ->where('member_id', $member->id)
+                ->with('expense')
+                ->orderByDesc('date')
+                ->orderByDesc('id')
+                ->paginate(30);
         }
 
         if ($tab === 'payments') {
@@ -180,6 +193,29 @@ class MyController extends Controller
         ]);
 
         return redirect()->route('my', ['tab' => 'meal-off'])->with('success', __('Meal off request submitted. The manager will review it.'));
+    }
+
+    /**
+     * Member self-service: file a grocery (bazar) purchase claim. It becomes a
+     * real expense only once a manager approves it.
+     */
+    public function storeGrocery(StoreGrocerySubmissionRequest $request): RedirectResponse
+    {
+        $member = $request->user()->getMemberOrNull();
+        if (! $member) {
+            return redirect()->route('my')->with('error', __('Your mess account is not set up.'));
+        }
+
+        $submission = $this->groceries->submit(
+            $member,
+            $request->validated(),
+            $request->file('receipt'),
+        );
+
+        return redirect()->route('my', ['tab' => 'groceries'])
+            ->with('success', __('Grocery purchase of :amount submitted — your manager will review it.', [
+                'amount' => number_format((float) $submission->amount, 2),
+            ]));
     }
 
     /**
