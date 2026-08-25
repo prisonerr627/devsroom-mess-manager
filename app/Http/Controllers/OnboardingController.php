@@ -15,7 +15,8 @@ class OnboardingController extends Controller
     /**
      * "Create a mess": available to any logged-in user who is not attached
      * to a mess yet (fresh signup, or the super-admin on a new install).
-     * The creator becomes the mess's super-admin.
+     * The creator becomes the mess's manager. (super-admin stays the
+     * installation-wide owner role: backups/restore, all users.)
      */
     public function create(): View|RedirectResponse
     {
@@ -48,11 +49,10 @@ class OnboardingController extends Controller
 
             $user->forceFill(['mess_id' => $mess->id])->save();
 
-            // The creator is the super-admin of their mess. Mess data is
-            // scoped by users.mess_id, so this grants full control of THIS
-            // mess only (see NotificationService for the cross-mess guard).
+            // The creator manages this mess. A super-admin (platform owner
+            // creating the first mess on a fresh install) keeps their role.
             if (! $user->hasRole('super-admin')) {
-                $user->assignRole(Role::firstOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']));
+                $user->assignRole(Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager']));
             }
 
             return $mess;
@@ -75,6 +75,6 @@ class OnboardingController extends Controller
         }
 
         return redirect()->route('home')
-            ->with('success', __('Your mess has been created and you are its super admin. Share join code :code with your members so they can join.', ['code' => $mess->join_code]));
+            ->with('success', __('Your mess has been created and you are its manager. Share join code :code with your members so they can join.', ['code' => $mess->join_code]));
     }
 }
