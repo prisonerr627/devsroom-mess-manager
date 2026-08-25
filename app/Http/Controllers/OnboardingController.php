@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Onboarding\CreateMessRequest;
 use App\Models\Mess;
 use App\Models\Setting;
+use App\Support\DefaultExpenseCategories;
 use HasinHayder\Tyro\Models\Role;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,11 @@ class OnboardingController extends Controller
         foreach ($settings as $row) {
             Setting::create(array_merge($row, ['mess_id' => $mess->id]));
         }
+
+        // Default expense categories (incl. the bazar-kind one grocery
+        // approvals need). Previously only db:seed created these, so a mess
+        // created from the chooser had none.
+        DefaultExpenseCategories::seedFor($mess);
 
         return redirect()->route('home')
             ->with('success', __('Your mess has been created and you are its manager. Share join code :code with your members so they can join.', ['code' => $mess->join_code]));
