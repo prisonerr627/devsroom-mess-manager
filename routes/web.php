@@ -38,7 +38,6 @@ use App\Http\Controllers\My\MyWalletController;
 use App\Http\Controllers\MyController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
-use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\JoinController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PostLoginRedirectController;
@@ -110,12 +109,10 @@ Route::middleware(['auth', 'role:super-admin'])
             ->name('restore.store');
     });
 
-// App-owned signup: overrides the Tyro login package's /register (same URI,
-// registered later) so we can collect username + mobile. New accounts get no
-// role and no mess — the /join chooser assigns both.
-Route::get('/register', [RegisterController::class, 'create'])->name('register');
-Route::post('/register', [RegisterController::class, 'store'])
-    ->middleware('throttle:10,1');
+// NOTE: signup (/register) is the Tyro login package's route, re-pointed at
+// App\Http\Controllers\Auth\RegisterController in AppServiceProvider::boot
+// so it collects username + mobile. Defining a second /register here would
+// lose to the package's under the route cache (first registration wins).
 
 // Public set-password (from invite link)
 Route::get('/set-password', [SetPasswordController::class, 'show'])->name('password.set.show');

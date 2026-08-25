@@ -9,6 +9,7 @@ use App\Models\GuestMeal;
 use App\Models\MealEntry;
 use App\Models\MealOffRequest;
 use App\Models\MemberDisabledDay;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Models\Mess;
 use App\Models\MonthlyClosing;
 use App\Models\MessClosedDay;
@@ -43,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->takeOverRegistrationRoutes();
+
         Carbon::setLocale('en');
 
         // Apply DB-stored cloud credentials BEFORE the google-drive driver is
@@ -223,5 +226,29 @@ class AppServiceProvider extends ServiceProvider
         Cache::forget(
             "dash:counts:{$messId}:{$carbon->year}-".str_pad((string) $carbon->month, 2, '0', STR_PAD_LEFT)
         );
+    }
+
+    /**
+     * Re-point the Tyro login package's /register routes at the app's own
+     * RegisterController (collects username + mobile; assigns no role/mess —
+     * the /join chooser does). Done here, after the package registered them
+     * and before app routes load, so the route cache built by `optimize`
+     * carries the swap. Defining a second /register in routes/web.php would
+     * NOT work: the compiled matcher keeps the first registration.
+     */
+    private function takeOverRegistrationRoutes(): void
+    {
+        if (! config('tyro-login.registration.enabled', false)) {
+            return;
+        }
+
+        $routes = Route::getRoutes();
+        $routes->refreshNameLookups();
+
+        $routes->getByName('tyro-login.register')
+            ?->uses([RegisterController::class, 'create']);
+        $routes->getByName('tyro-login.register.submit')
+            ?->uses([RegisterController::class, 'store'])
+            ->middleware('throttle:10,1');
     }
 }

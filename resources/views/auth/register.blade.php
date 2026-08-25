@@ -15,7 +15,7 @@
         </div>
 
         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <form method="POST" action="{{ route('register') }}" class="flex flex-col gap-4">
+            <form method="POST" action="{{ route('tyro-login.register.submit') }}" class="flex flex-col gap-4">
                 @csrf
 
                 <div class="flex flex-col gap-1">
