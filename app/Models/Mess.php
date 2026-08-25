@@ -30,13 +30,13 @@ class Mess extends Model implements AuditableContract
      *
      * Priority:
      *   1. an explicit setActiveId() (queue jobs / console work for one mess)
-     *   2. the env override (mess.active_mess_id) if that Mess exists
-     *   3. the logged-in user's own mess (users.mess_id) — may be NULL for a
+     *   2. the logged-in user's own mess (users.mess_id) — may be NULL for a
      *      freshly signed-up user who has not joined or created a mess yet;
      *      that null is deliberate and must never fall through to another
-     *      mess's data
-     *   4. no authenticated user (console, guest pages): the first Mess row,
-     *      which is the legacy single-mess behaviour
+     *      mess's data (an unattached super-admin gets the first mess)
+     *   3. no authenticated user (console, guest pages): the env override
+     *      (mess.active_mess_id) if that Mess exists, else the first Mess row
+     *      — the legacy single-mess behaviour
      *
      * Returns null when no mess applies (pre-onboarding, or an unattached user).
      */
@@ -44,14 +44,6 @@ class Mess extends Model implements AuditableContract
     {
         if (self::$activeIdCache !== null) {
             return self::$activeIdCache;
-        }
-
-        $override = config('mess.active_mess_id');
-        if (is_int($override) || (is_string($override) && ctype_digit($override))) {
-            $id = (int) $override;
-            if (static::query()->whereKey($id)->exists()) {
-                return self::$activeIdCache = $id;
-            }
         }
 
         $user = auth()->user();
@@ -70,6 +62,16 @@ class Mess extends Model implements AuditableContract
             self::$activeIdCache = $id !== null ? (int) $id : null;
 
             return self::$activeIdCache;
+        }
+
+        // No user (console / guest): env pin, else the first mess. Never
+        // consulted for a logged-in user — that would override their tenant.
+        $override = config('mess.active_mess_id');
+        if (is_int($override) || (is_string($override) && ctype_digit($override))) {
+            $id = (int) $override;
+            if (static::query()->whereKey($id)->exists()) {
+                return $id;
+            }
         }
 
         $id = static::query()->orderBy('id')->value('id');
