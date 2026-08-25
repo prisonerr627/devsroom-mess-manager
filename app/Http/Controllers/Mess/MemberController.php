@@ -11,11 +11,13 @@ use App\Models\Member;
 use App\Models\Mess;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\MemberStatus;
 use App\Support\StorageProvider;
 use HasinHayder\Tyro\Models\Role;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -109,6 +111,84 @@ class MemberController extends Controller
         return redirect()
             ->route('mess.members.show', $member)
             ->with('success', __('Member :name added.', ['name' => $member->name]));
+    }
+
+    /**
+     * Add a signed-up user to this mess by username or mobile number. Only
+     * users not yet attached to any mess can be added this way; the member
+     * record is created from their signup details and their login is linked.
+     */
+    public function link(Request $request): RedirectResponse
+    {
+        $identifier = trim((string) $request->input('identifier'));
+        if ($identifier === '') {
+            return redirect()->route('mess.members.index')->with('error', __('Enter a username or mobile number.'));
+        }
+
+        $normalizedMobile = preg_replace('/[\s\-]/', '', $identifier);
+        $user = User::query()
+            ->where('username', strtolower($identifier))
+            ->orWhere('mobile', $normalizedMobile)
+            ->first();
+
+        if (! $user) {
+            return redirect()->route('mess.members.index')
+                ->with('error', __('No signed-up user matches ":id". Ask them to sign up first, or add them as a member manually.', ['id' => $identifier]));
+        }
+
+        if ($user->mess_id !== null) {
+            $mine = (int) $user->mess_id === (int) Mess::activeId();
+
+            return redirect()->route('mess.members.index')
+                ->with('error', $mine
+                    ? __(':name is already in this mess.', ['name' => $user->name])
+                    : __(':name already belongs to another mess.', ['name' => $user->name]));
+        }
+
+        if ($user->canManageMess()) {
+            return redirect()->route('mess.members.index')
+                ->with('error', __(':name is an administrator account and cannot be added as a member.', ['name' => $user->name]));
+        }
+
+        $messId = Mess::activeId();
+
+        $member = DB::transaction(function () use ($user, $messId): Member {
+            // A manager may already have added this person by email without a
+            // login — link that record rather than creating a duplicate.
+            $member = $user->email
+                ? Member::query()->where('email', $user->email)->whereNull('user_id')->first()
+                : null;
+
+            if ($member) {
+                $member->update(['user_id' => $user->id, 'mobile' => $member->mobile ?? $user->mobile]);
+            } else {
+                $member = Member::create([
+                    'mess_id' => $messId,
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'mobile' => $user->mobile,
+                    'email' => $user->email,
+                    'joining_date' => now()->toDateString(),
+                    'status' => MemberStatus::ACTIVE,
+                ]);
+            }
+
+            $user->forceFill([
+                'mess_id' => $messId,
+                'password_changed_at' => $user->password_changed_at ?? now(),
+            ])->save();
+
+            try {
+                $user->assignRole(Role::firstOrCreate(['slug' => 'mess-member'], ['name' => 'Mess Member']));
+            } catch (\Throwable $e) {
+                Log::error('member.link.role_assign_failed', ['user_id' => $user->id, 'exception' => $e->getMessage()]);
+            }
+
+            return $member;
+        });
+
+        return redirect()->route('mess.members.show', $member)
+            ->with('success', __(':name added to the mess and linked to their login (:email).', ['name' => $member->name, 'email' => $user->email]));
     }
 
     public function show(Member $member): View

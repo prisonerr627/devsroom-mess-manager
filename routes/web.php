@@ -38,6 +38,7 @@ use App\Http\Controllers\My\MyWalletController;
 use App\Http\Controllers\MyController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\JoinController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PostLoginRedirectController;
@@ -109,6 +110,13 @@ Route::middleware(['auth', 'role:super-admin'])
             ->name('restore.store');
     });
 
+// App-owned signup: overrides the Tyro login package's /register (same URI,
+// registered later) so we can collect username + mobile. New accounts get no
+// role and no mess — the /join chooser assigns both.
+Route::get('/register', [RegisterController::class, 'create'])->name('register');
+Route::post('/register', [RegisterController::class, 'store'])
+    ->middleware('throttle:10,1');
+
 // Public set-password (from invite link)
 Route::get('/set-password', [SetPasswordController::class, 'show'])->name('password.set.show');
 Route::post('/set-password', [SetPasswordController::class, 'update'])->name('password.set.update');
@@ -160,6 +168,10 @@ Route::middleware(['auth', 'roles:super-admin,manager', EnsureMessExists::class]
     Route::get('mess/members-search', MemberSearchController::class)
         ->name('mess.members.search');
 
+    // Add a signed-up user (not yet in any mess) as a member by username or phone.
+    Route::post('mess/members/link', [MemberController::class, 'link'])
+        ->middleware('throttle:20,1')
+        ->name('mess.members.link');
     Route::post('mess/members/{member}/meal-off', [ManagerMealOffController::class, 'store'])
         ->name('mess.members.meal-off.store')
         ->middleware('month.open');

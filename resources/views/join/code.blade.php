@@ -33,7 +33,7 @@
                     <label for="mobile" class="text-sm font-medium text-slate-900">
                         {{ __('Mobile') }}<span class="text-red-600" aria-hidden="true">*</span>
                     </label>
-                    <input type="tel" name="mobile" id="mobile" value="{{ old('mobile') }}" required maxlength="30" placeholder="01700000000"
+                    <input type="tel" name="mobile" id="mobile" value="{{ old('mobile', auth()->user()->mobile) }}" required maxlength="30" placeholder="01700000000"
                         class="input @error('mobile') border-red-500 @enderror">
                     @error('mobile') <p class="text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>

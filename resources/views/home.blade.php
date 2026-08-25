@@ -48,6 +48,16 @@
         </a>
     @endif
 
+    @if (! empty($joinCode))
+        <div class="mb-4 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-900">{{ __('Mess join code') }}</p>
+                <p class="text-xs text-slate-600">{{ __('Members sign up, choose "Join a mess with a code", and enter this. You can also add signed-up users by username or mobile from the Members page.') }}</p>
+            </div>
+            <span class="inline-block rounded-lg border border-emerald-300 bg-white px-4 py-2 font-mono text-xl font-semibold tracking-[0.3em] text-emerald-800 select-all">{{ $joinCode }}</span>
+        </div>
+    @endif
+
     @if (($pendingGroceries ?? 0) > 0)
         <a href="{{ route('mess.groceries.index') }}" class="mb-4 block rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 transition-colors hover:bg-amber-100">
             {{ trans_choice(':count grocery purchase submitted by a member awaiting review|:count grocery purchases submitted by members awaiting review', $pendingGroceries) }}

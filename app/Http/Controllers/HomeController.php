@@ -26,6 +26,7 @@ class HomeController extends Controller
         $messId = Mess::activeId();
 
         return view('home', [
+            'joinCode' => $messId ? Mess::query()->whereKey($messId)->value('join_code') : null,
             'cards' => $this->dashboards->managerCards(),
             'pendingMealOff' => $this->dashboards->pendingMealOffCount(),
             'pendingGroceries' => GrocerySubmission::query()->where('status', GroceryStatus::PENDING)->count(),
